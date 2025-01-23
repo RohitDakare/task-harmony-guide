@@ -3,6 +3,7 @@ import { useToast } from "@/components/ui/use-toast";
 import TaskInput from "@/components/TaskInput";
 import TaskItem from "@/components/TaskItem";
 import TaskProgress from "@/components/TaskProgress";
+import AIAssistant from "@/components/AIAssistant";
 import { Task, Priority } from "@/types/task";
 
 const Index = () => {
@@ -72,6 +73,7 @@ const Index = () => {
           </div>
         </div>
       </div>
+      <AIAssistant onAddTask={handleAddTask} />
     </div>
   );
 };
