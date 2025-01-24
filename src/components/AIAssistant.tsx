@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Priority } from "@/types/task";
 import { cn } from "@/lib/utils";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface AIAssistantProps {
   onAddTask: (title: string, priority: Priority) => void;
@@ -23,38 +24,26 @@ const AIAssistant = ({ onAddTask }: AIAssistantProps) => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a task management assistant. When users describe tasks, extract the task title and suggest a priority level (low, medium, or high) based on urgency and importance. Respond in JSON format like this: {"title": "task title", "priority": "low|medium|high"}. Keep titles concise.'
-            },
-            {
-              role: 'user',
-              content: message
-            }
-          ],
-          temperature: 0.2,
-        }),
-      });
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-      if (!response.ok) throw new Error('API request failed');
+      const prompt = `You are a task management assistant. Based on this task description, create a JSON response with a concise task title and priority level (low, medium, or high) based on urgency and importance. The response should be in this format: {"title": "task title", "priority": "low|medium|high"}. Task description: ${message}`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
       
-      const data = await response.json();
-      const result = JSON.parse(data.choices[0].message.content);
+      // Extract JSON from the response
+      const jsonMatch = text.match(/\{.*\}/);
+      if (!jsonMatch) throw new Error('Invalid response format');
       
-      onAddTask(result.title, result.priority as Priority);
+      const parsedResult = JSON.parse(jsonMatch[0]);
+      
+      onAddTask(parsedResult.title, parsedResult.priority as Priority);
       setMessage("");
       toast({
         title: "Task created",
-        description: `Added "${result.title}" with ${result.priority} priority`,
+        description: `Added "${parsedResult.title}" with ${parsedResult.priority} priority`,
       });
     } catch (error) {
       toast({
@@ -78,7 +67,7 @@ const AIAssistant = ({ onAddTask }: AIAssistantProps) => {
       >
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">AI Task Assistant</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">AI Task Assistant (Gemini)</h3>
             <Button
               variant="ghost"
               size="icon"
@@ -93,13 +82,13 @@ const AIAssistant = ({ onAddTask }: AIAssistantProps) => {
             <div className="mb-4 animate-fade-in">
               <Input
                 type="password"
-                placeholder="Enter your Perplexity API key"
+                placeholder="Enter your Google AI API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 className="mb-2 bg-gray-50 dark:bg-gray-900"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Enter your Perplexity API key to use the AI assistant
+                Enter your Google AI API key to use the AI assistant
               </p>
             </div>
           )}
